@@ -4,18 +4,26 @@
 
 #include <iostream>
 
-bool hitsphere(const point3& center, double radius, const ray& r){
-    vec3 oc = r.origin() - center;
+double hitsphere(const point3& center, double radius, const ray& r){
+    vec3 oc = center - r.origin();
     auto a = r.direction().length_squared();
-    auto b = -2.0 * dot(oc, r.direction());  
-    auto c = r.direction().length_squared() - radius*radius;
-    auto discriminant = b*b - 4*a*c;
-    return (discriminant >= 0);
+    auto h = dot(r.direction(), oc);
+    auto c = oc.length_squared() - radius*radius;
+    auto discriminant = h*h - a*c;
+    if(discriminant >= 0) {
+        return (h - std::sqrt(discriminant)) / a;
+    }
+    else {
+        return -1.0;
+    }
 }
 
 color ray_color(const ray& r) {
-    if(hitsphere(point3(1,1,-1), 0.5, r)) {
-        return color(1,0,0);
+
+    auto t = hitsphere(point3(0,0,-1),0.5,r);
+    if(t > 0.0){
+        vec3 N = unit_vector(r.at(t) - point3(0,0,-1));
+        return color(N.z()*0.5+0.5, N.x()*0.5+0.5, N.y()*0.5+0.5);
     }
 
     vec3 unit_direction = unit_vector(r.direction());
@@ -28,7 +36,7 @@ int main() {
     // Image
 
     auto aspect_ratio = 16.0 / 9.0;
-    int image_width = 4000;
+    int image_width = 400;
 
     //Calculate the image height 
 
@@ -44,14 +52,14 @@ int main() {
     // calc the vec across the horiz and doewn the vert viewport edges.
 
     auto viewport_u = vec3(viewport_width, 0, 0);
-    auto viewport_v = vec3(0, viewport_height, 0);
+    auto viewport_v = vec3(0, -viewport_height, 0);
 
     // calc the horiz and vert del vectors from pxl to pxl
     auto pixel_delta_u = viewport_u / image_width;
     auto pixel_delta_v = viewport_v / image_height;
 
     // calc the location of the upper left pixel
-    auto viewport_upper_left = camera_center - vec3(0, 0, focal_length) - pixel_delta_u/2 - pixel_delta_v/2;
+    auto viewport_upper_left = camera_center - vec3(0, 0, focal_length) - viewport_u/2 - viewport_v/2;
     auto pixel00_loc = viewport_upper_left + 0.5 * (pixel_delta_u + pixel_delta_v);
 
     // Render
